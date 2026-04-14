@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
-import type { Direction, GameState, Position } from '../types/game'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import type { Direction, GameState, GameStatus, Position } from '../types/game'
+import { playEat, playGameOver, playLevelUp } from '../lib/sounds'
 
 export const GRID_SIZE = 20
 const INITIAL_SPEED = 150
@@ -41,6 +42,29 @@ function getInitialState(prevHighScore?: number): GameState {
 export function useSnakeGame() {
   const [state, setState] = useState<GameState>(() => getInitialState())
 
+  // Track previous score and status to fire sounds as side-effects
+  const prevScoreRef = useRef(0)
+  const prevStatusRef = useRef<GameStatus>('idle')
+
+  useEffect(() => {
+    const prevScore = prevScoreRef.current
+    const prevStatus = prevStatusRef.current
+
+    if (state.score > prevScore) {
+      const prevLevel = Math.floor(prevScore / 50) + 1
+      const newLevel  = Math.floor(state.score / 50) + 1
+      if (newLevel > prevLevel) playLevelUp()
+      else playEat()
+    }
+
+    if (state.status === 'gameover' && prevStatus !== 'gameover') {
+      playGameOver()
+    }
+
+    prevScoreRef.current = state.score
+    prevStatusRef.current = state.status
+  }, [state.score, state.status])
+
   const tick = useCallback(() => {
     setState(prev => {
       if (prev.status !== 'running') return prev
@@ -66,8 +90,8 @@ export function useSnakeGame() {
         : [newHead, ...prev.snake.slice(0, -1)]
 
       const newScore = ateFood ? prev.score + 10 : prev.score
-      const newFood = ateFood ? randomFood(newSnake) : prev.food
-      const level = Math.floor(newScore / 50) + 1
+      const newFood  = ateFood ? randomFood(newSnake) : prev.food
+      const level    = Math.floor(newScore / 50) + 1
       const newSpeed = Math.max(60, INITIAL_SPEED - (level - 1) * 15)
 
       return {
@@ -81,7 +105,7 @@ export function useSnakeGame() {
     })
   }, [])
 
-  // Game loop: re-fires whenever snake moves (deps include state.snake)
+  // Game loop: re-fires whenever snake moves
   useEffect(() => {
     if (state.status !== 'running') return
     const id = setTimeout(tick, state.speed)
@@ -108,7 +132,7 @@ export function useSnakeGame() {
   const togglePause = useCallback(() => {
     setState(prev => {
       if (prev.status === 'running') return { ...prev, status: 'paused' }
-      if (prev.status === 'paused') return { ...prev, status: 'running' }
+      if (prev.status === 'paused')  return { ...prev, status: 'running' }
       return prev
     })
   }, [])
@@ -117,38 +141,12 @@ export function useSnakeGame() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       switch (e.key) {
-        case 'ArrowUp':
-        case 'w':
-        case 'W':
-          e.preventDefault()
-          setDirection('UP')
-          break
-        case 'ArrowDown':
-        case 's':
-        case 'S':
-          e.preventDefault()
-          setDirection('DOWN')
-          break
-        case 'ArrowLeft':
-        case 'a':
-        case 'A':
-          e.preventDefault()
-          setDirection('LEFT')
-          break
-        case 'ArrowRight':
-        case 'd':
-        case 'D':
-          e.preventDefault()
-          setDirection('RIGHT')
-          break
-        case ' ':
-          e.preventDefault()
-          togglePause()
-          break
-        case 'Enter':
-          e.preventDefault()
-          start()
-          break
+        case 'ArrowUp':    case 'w': case 'W': e.preventDefault(); setDirection('UP');    break
+        case 'ArrowDown':  case 's': case 'S': e.preventDefault(); setDirection('DOWN');  break
+        case 'ArrowLeft':  case 'a': case 'A': e.preventDefault(); setDirection('LEFT');  break
+        case 'ArrowRight': case 'd': case 'D': e.preventDefault(); setDirection('RIGHT'); break
+        case ' ':     e.preventDefault(); togglePause(); break
+        case 'Enter': e.preventDefault(); start();       break
       }
     }
     window.addEventListener('keydown', handler)

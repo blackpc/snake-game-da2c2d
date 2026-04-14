@@ -1,4 +1,7 @@
+import { useState } from 'react'
+import { Volume2, VolumeX } from 'lucide-react'
 import { useSnakeGame } from './hooks/useSnakeGame'
+import { getMuted, setMuted } from './lib/sounds'
 import ScorePanel from './components/ScorePanel'
 import GameBoard from './components/GameBoard'
 import GameOverlay from './components/GameOverlay'
@@ -7,6 +10,13 @@ import GameControls from './components/GameControls'
 
 export default function App() {
   const { state, start, togglePause, setDirection } = useSnakeGame()
+  const [muted, setMutedState] = useState(getMuted)
+
+  function toggleMute() {
+    const next = !muted
+    setMutedState(next)
+    setMuted(next)
+  }
 
   return (
     <div className="min-h-screen bg-[#080b14] flex flex-col items-center justify-center px-4 py-8">
@@ -18,9 +28,24 @@ export default function App() {
                          [text-shadow:0_0_24px_rgba(163,230,53,0.45)]">
             SNAKE
           </h1>
-          <span className="text-[10px] uppercase tracking-[0.18em] text-slate-600 font-semibold">
-            Classic arcade
-          </span>
+
+          <div className="flex items-center gap-3">
+            {/* Mute toggle */}
+            <button
+              onClick={toggleMute}
+              className="flex items-center justify-center w-8 h-8 rounded-lg
+                         text-slate-500 hover:text-slate-300 hover:bg-[#0f1629]
+                         transition-all duration-150
+                         focus:outline-none focus:ring-2 focus:ring-slate-600"
+              aria-label={muted ? 'Unmute sounds' : 'Mute sounds'}
+            >
+              {muted ? <VolumeX size={15} /> : <Volume2 size={15} />}
+            </button>
+
+            <span className="text-[10px] uppercase tracking-[0.18em] text-slate-600 font-semibold">
+              Classic arcade
+            </span>
+          </div>
         </header>
 
         {/* Score strip */}
